@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import { writeFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { getKSTDateISO } from '../utils/time.js';
 
 const execAsync = promisify(exec);
 
@@ -58,9 +59,8 @@ export function registerFeedbackHandlers() {
     const userName = body.user.name || body.user.id;
     const channelId = view.private_metadata; // 저장해둔 채널 정보
 
-    // 현재 날짜
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    // 현재 날짜 (KST)
+    const dateStr = getKSTDateISO();
 
     const issueTitle = `[피드백] ${dateStr} from @${userName}`;
     const issueBody = `> 이 이슈는 Slack에서 수신한 피드백으로 자동 생성되었습니다.

@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { fetchLatestMenu, formatMenuContent } from '../scraper/jinhansikdang.js';
 import { app } from '../slack/app.js';
 import { createReactionButtons } from './reactions.js';
+import { getKSTNow, getKSTDateStr } from '../utils/time.js';
 
 /**
  * 메뉴 포스트 가져오기 (DB 우선, 없으면 fetch)
@@ -55,21 +56,18 @@ export async function getOrFetchMenuPost(dateStr?: string): Promise<MenuPost | n
 }
 
 /**
- * 오늘 날짜 문자열 생성
+ * 오늘 날짜 문자열 생성 (KST 기준)
  */
 export function getTodayDateStr(): string {
-  const today = new Date();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${month}월${day}일`;
+  return getKSTDateStr();
 }
 
 /**
- * 메뉴 날짜와 오늘 날짜를 비교해서 며칠 전인지 반환
+ * 메뉴 날짜와 오늘 날짜를 비교해서 며칠 전인지 반환 (KST 기준)
  */
 export function getDaysAgo(menuDateStr: string): number {
-  const now = new Date();
-  const currentYear = now.getFullYear();
+  const kstNow = getKSTNow();
+  const currentYear = kstNow.getUTCFullYear();
 
   const match = menuDateStr.match(/(\d{2})월(\d{2})일/);
   if (!match) return 0;
@@ -77,10 +75,10 @@ export function getDaysAgo(menuDateStr: string): number {
   const menuMonth = parseInt(match[1], 10) - 1;
   const menuDay = parseInt(match[2], 10);
 
-  const menuDate = new Date(currentYear, menuMonth, menuDay);
-  const today = new Date(currentYear, now.getMonth(), now.getDate());
+  const menuDate = Date.UTC(currentYear, menuMonth, menuDay);
+  const today = Date.UTC(currentYear, kstNow.getUTCMonth(), kstNow.getUTCDate());
 
-  return Math.floor((today.getTime() - menuDate.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor((today - menuDate) / (1000 * 60 * 60 * 24));
 }
 
 /**
