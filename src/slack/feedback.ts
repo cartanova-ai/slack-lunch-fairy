@@ -32,6 +32,13 @@ export function registerFeedbackHandlers() {
           close: { type: 'plain_text', text: '취소' },
           blocks: [
             {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: '눌러주셔서 감사합니다:pray: 제발 10초만 더 시간을 내시어 개선을 도와주세요:face_holding_back_tears: 감사합니다:bow::bow:\n\n작성해주신 소중한 내용은 GitHub에 이슈로 올라갑니다! 반드시 한 글자도 빼놓지 않고 꼼꼼하게 읽어보겠습니다:saluting_face:',
+              },
+            },
+            {
               type: 'input',
               block_id: 'feedback_input',
               label: { type: 'plain_text', text: '고장신고 또는 기능제안' },
