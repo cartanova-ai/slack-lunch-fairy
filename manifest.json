@@ -6,7 +6,7 @@
   },
   "features": {
     "bot_user": {
-      "display_name": "점심 요정",
+      "display_name": "Lunch Fairy",
       "always_online": true
     },
     "slash_commands": [
