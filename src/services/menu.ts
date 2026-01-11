@@ -93,7 +93,7 @@ export function formatMenuMessage(menuPost: MenuPost): string {
     noticeText = `> _${daysAgo}일 전 정보입니다. 오늘 메뉴는 아직 올라오지 않았어요._\n\n`;
   }
 
-  return `${noticeText}🍽️ *${menuPost.date} 점심 메뉴* 🍽️\n\n${formattedContent}`;
+  return `${noticeText}🍽️ *진한식당 ${menuPost.date} 점심 메뉴* 🍽️\n\n${formattedContent}`;
 }
 
 /**
