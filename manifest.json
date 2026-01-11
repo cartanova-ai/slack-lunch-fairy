@@ -22,6 +22,7 @@
     "scopes": {
       "bot": [
         "chat:write",
+        "chat:write.public",
         "commands",
         "reactions:read",
         "reactions:write"
@@ -36,7 +37,7 @@
       ]
     },
     "interactivity": {
-      "is_enabled": false
+      "is_enabled": true
     },
     "org_deploy_enabled": false,
     "socket_mode_enabled": true,

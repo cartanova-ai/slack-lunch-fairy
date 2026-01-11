@@ -33,10 +33,16 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS menu_posts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL UNIQUE,
+      menu_text TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE TABLE IF NOT EXISTS menu_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      menu_post_id INTEGER NOT NULL REFERENCES menu_posts(id),
       channel_id TEXT NOT NULL,
       message_ts TEXT NOT NULL,
-      menu_text TEXT NOT NULL,
-      date TEXT NOT NULL,
       created_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
@@ -44,12 +50,13 @@ export function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       menu_post_id INTEGER NOT NULL REFERENCES menu_posts(id),
       user_id TEXT NOT NULL,
-      emoji TEXT NOT NULL,
+      sentiment TEXT NOT NULL,
       added_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
-    CREATE INDEX IF NOT EXISTS idx_menu_posts_channel_date ON menu_posts(channel_id, date);
-    CREATE INDEX IF NOT EXISTS idx_reactions_menu_post ON reactions(menu_post_id);
+    CREATE INDEX IF NOT EXISTS idx_menu_posts_date ON menu_posts(date);
+    CREATE INDEX IF NOT EXISTS idx_menu_messages_ts ON menu_messages(channel_id, message_ts);
+    CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(menu_post_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_user_post ON reactions(menu_post_id, user_id);
   `);
 

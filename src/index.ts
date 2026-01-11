@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { initDb } from './db/index.js';
-import { startSlackApp, registerCommands, registerReactionHandlers } from './slack/index.js';
+import { startSlackApp, registerCommands, registerReactionHandlers, registerFeedbackHandlers } from './slack/index.js';
 import { startScheduler } from './scheduler/index.js';
 
 console.log('점심 요정 시작!');
@@ -13,6 +13,9 @@ registerCommands();
 
 // 리액션 핸들러 등록
 registerReactionHandlers();
+
+// 피드백 핸들러 등록
+registerFeedbackHandlers();
 
 // Slack 앱 시작
 await startSlackApp();

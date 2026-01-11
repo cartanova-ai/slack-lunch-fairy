@@ -124,3 +124,89 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
 }
+
+/**
+ * 메뉴 텍스트 정리 및 포맷팅
+ * - 📍 이전까지만 (식당 정보 제외)
+ * - 이모지 기준으로 bullet 리스트
+ */
+export function formatMenuContent(rawContent: string): string {
+  // 📍 이전까지만 자르기 (식당 정보 제외)
+  const menuPart = rawContent.split('📍')[0].trim();
+
+  // 이모지+텍스트 패턴으로 각 메뉴 항목 추출
+  // 이모지(1개 이상) + 공백 없이 바로 붙은 텍스트 + 다음 이모지 전까지
+  const menuPattern = /([\p{Emoji}\u{FE0F}]+)\s*([^[\p{Emoji}]+)/gu;
+  const matches = [...menuPart.matchAll(menuPattern)];
+
+  const menuItems: string[] = [];
+  for (const match of matches) {
+    const emoji = match[1];
+    const text = match[2]?.trim();
+    if (emoji && text) {
+      menuItems.push(`• ${emoji} ${text}`);
+    }
+  }
+
+  return menuItems.join('\n');
+}
+
+/**
+ * 최신 메뉴 가져오기 (날짜 무관, 최상단 메뉴)
+ */
+export async function fetchLatestMenu(): Promise<TodayMenu | null> {
+  try {
+    const response = await fetch(FEED_URL, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`피드 요청 실패: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    return parseLatestMenu(html);
+  } catch (error) {
+    console.error('메뉴 가져오기 실패:', error);
+    return null;
+  }
+}
+
+/**
+ * HTML에서 최신 점심 메뉴 파싱 (날짜 무관)
+ */
+function parseLatestMenu(html: string): TodayMenu | null {
+  // 제목 패턴: "XX월XX일(X요일) ♥진한식당 점심메뉴♥" (날짜 무관)
+  const titlePattern = /(\d{2}월\d{2}일)\([월화수목금토일]요일\)[^<]*점심메뉴[^<]*/;
+
+  const titleMatch = html.match(titlePattern);
+  if (!titleMatch) {
+    console.log('점심 메뉴 없음');
+    return null;
+  }
+
+  const title = titleMatch[0];
+  const dateStr = titleMatch[1]; // "01월11일"
+
+  // 메뉴 본문 추출
+  const contentPattern = new RegExp(
+    `${escapeRegex(title)}</div><div class="pui__vn15t2"><a[^>]+>([^<]+)</a>`
+  );
+
+  const contentMatch = html.match(contentPattern);
+  if (!contentMatch) {
+    console.log('메뉴 본문 파싱 실패');
+    return null;
+  }
+
+  const content = decodeHtmlEntities(contentMatch[1]);
+
+  return {
+    title,
+    content,
+    date: dateStr,
+  };
+}
