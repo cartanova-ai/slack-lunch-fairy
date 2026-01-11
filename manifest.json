@@ -23,7 +23,8 @@
       "bot": [
         "chat:write",
         "commands",
-        "reactions:read"
+        "reactions:read",
+        "reactions:write"
       ]
     }
   },
