@@ -65,14 +65,14 @@ export function getTodayDateStr(): string {
 }
 
 /**
- * 메뉴 날짜와 오늘 날짜를 비교해서 상대 표현 반환
+ * 메뉴 날짜와 오늘 날짜를 비교해서 며칠 전인지 반환
  */
-export function getRelativeDateLabel(menuDateStr: string): string {
+export function getDaysAgo(menuDateStr: string): number {
   const now = new Date();
   const currentYear = now.getFullYear();
 
   const match = menuDateStr.match(/(\d{2})월(\d{2})일/);
-  if (!match) return '';
+  if (!match) return 0;
 
   const menuMonth = parseInt(match[1], 10) - 1;
   const menuDay = parseInt(match[2], 10);
@@ -80,15 +80,7 @@ export function getRelativeDateLabel(menuDateStr: string): string {
   const menuDate = new Date(currentYear, menuMonth, menuDay);
   const today = new Date(currentYear, now.getMonth(), now.getDate());
 
-  const diffDays = Math.floor((today.getTime() - menuDate.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return '';
-  if (diffDays === 1) return ' (어제)';
-  if (diffDays === 2) return ' (그제)';
-  if (diffDays === 3) return ' (엊그제)';
-  if (diffDays > 3) return ` (${diffDays}일 전)`;
-
-  return '';
+  return Math.floor((today.getTime() - menuDate.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 /**
@@ -96,8 +88,14 @@ export function getRelativeDateLabel(menuDateStr: string): string {
  */
 export function formatMenuMessage(menuPost: MenuPost): string {
   const formattedContent = formatMenuContent(menuPost.menuText);
-  const relativeLabel = getRelativeDateLabel(menuPost.date);
-  return `🍽️ *${menuPost.date} 점심 메뉴${relativeLabel}* 🍽️\n\n${formattedContent}`;
+  const daysAgo = getDaysAgo(menuPost.date);
+
+  let noticeText = '';
+  if (daysAgo > 0) {
+    noticeText = `> _${daysAgo}일 전 정보입니다. 오늘 메뉴는 아직 올라오지 않았어요._\n\n`;
+  }
+
+  return `${noticeText}🍽️ *${menuPost.date} 점심 메뉴* 🍽️\n\n${formattedContent}`;
 }
 
 /**
