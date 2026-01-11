@@ -70,7 +70,6 @@ pm2 save
 |--------|------|
 | `SLACK_BOT_TOKEN` | Slack Bot OAuth Token (xoxb-...) |
 | `SLACK_APP_TOKEN` | Slack App-Level Token (xapp-...) |
-| `SLACK_SIGNING_SECRET` | Slack Signing Secret |
 
 ## 필요한 Slack 권한
 
