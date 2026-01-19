@@ -64,10 +64,11 @@ export function getTodayDateStr(): string {
 
 /**
  * 메뉴 날짜와 오늘 날짜를 비교해서 며칠 전인지 반환 (KST 기준)
+ * @param menuDateStr "01월09일" 형식의 날짜 문자열
+ * @param createdAt 메뉴 포스트가 생성된 시점 (연도 결정에 사용)
  */
-export function getDaysAgo(menuDateStr: string): number {
+export function getDaysAgo(menuDateStr: string, createdAt: Date): number {
   const kstNow = getKSTNow();
-  const currentYear = kstNow.getUTCFullYear();
 
   const match = menuDateStr.match(/(\d{2})월(\d{2})일/);
   if (!match) return 0;
@@ -75,8 +76,10 @@ export function getDaysAgo(menuDateStr: string): number {
   const menuMonth = parseInt(match[1], 10) - 1;
   const menuDay = parseInt(match[2], 10);
 
-  const menuDate = Date.UTC(currentYear, menuMonth, menuDay);
-  const today = Date.UTC(currentYear, kstNow.getUTCMonth(), kstNow.getUTCDate());
+  // createdAt 기준으로 연도 결정 (연말/연초 경계 문제 방지)
+  const createdYear = createdAt.getUTCFullYear();
+  const menuDate = Date.UTC(createdYear, menuMonth, menuDay);
+  const today = Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
 
   return Math.floor((today - menuDate) / (1000 * 60 * 60 * 24));
 }
@@ -86,7 +89,7 @@ export function getDaysAgo(menuDateStr: string): number {
  */
 export function formatMenuMessage(menuPost: MenuPost): string {
   const formattedContent = formatMenuContent(menuPost.menuText);
-  const daysAgo = getDaysAgo(menuPost.date);
+  const daysAgo = getDaysAgo(menuPost.date, menuPost.createdAt);
 
   let noticeText = '';
   if (daysAgo > 0) {
