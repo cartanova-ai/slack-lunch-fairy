@@ -86,14 +86,21 @@ export function getDaysAgo(menuDateStr: string, createdAt: Date): number {
 
 /**
  * 메뉴 메시지 포맷팅
+ * @param menuPost 메뉴 포스트 데이터
+ * @param options.skipDaysAgoNotice true이면 "n일 전 정보입니다" 문구 생략 (리액션 업데이트 시 사용)
  */
-export function formatMenuMessage(menuPost: MenuPost): string {
+export function formatMenuMessage(
+  menuPost: MenuPost,
+  options?: { skipDaysAgoNotice?: boolean }
+): string {
   const formattedContent = formatMenuContent(menuPost.menuText);
-  const daysAgo = getDaysAgo(menuPost.date, menuPost.createdAt);
 
   let noticeText = '';
-  if (daysAgo > 0) {
-    noticeText = `> _${daysAgo}일 전 정보입니다. 오늘 메뉴는 아직 올라오지 않았어요._\n\n`;
+  if (!options?.skipDaysAgoNotice) {
+    const daysAgo = getDaysAgo(menuPost.date, menuPost.createdAt);
+    if (daysAgo > 0) {
+      noticeText = `> _${daysAgo}일 전 정보입니다. 오늘 메뉴는 아직 올라오지 않았어요._\n\n`;
+    }
   }
 
   return `${noticeText}🍽️ *진한식당 ${menuPost.date} 점심 메뉴* 🍽️\n\n${formattedContent}`;

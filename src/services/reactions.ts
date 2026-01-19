@@ -138,7 +138,8 @@ export async function updateAllMenuMessageButtons(menuPostId: number): Promise<v
   if (!menuPost) return;
 
   // 메시지 텍스트와 블록을 DB 정보로 재구성
-  const message = formatMenuMessage(menuPost);
+  // 리액션 업데이트 시에는 "n일 전 정보입니다" 문구를 생략 (최초 전송 시에만 붙음)
+  const message = formatMenuMessage(menuPost, { skipDaysAgoNotice: true });
   const buttons = createReactionButtons(menuPostId);
   const blocks = [
     {
