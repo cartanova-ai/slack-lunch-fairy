@@ -23,6 +23,34 @@ export const SENTIMENT_LABEL: Record<Sentiment, string> = {
 };
 
 /**
+ * 메뉴 포스트의 리액션을 감정별로 그룹핑하여 사용자 ID 목록 반환
+ */
+export function getReactionsBysentiment(menuPostId: number): Record<Sentiment, string[]> {
+  const result: Record<Sentiment, string[]> = {
+    positive: [],
+    neutral: [],
+    negative: [],
+  };
+
+  const rows = db
+    .select({
+      userId: reactions.userId,
+      sentiment: reactions.sentiment,
+    })
+    .from(reactions)
+    .where(eq(reactions.menuPostId, menuPostId))
+    .all();
+
+  for (const row of rows) {
+    if (row.sentiment in result) {
+      result[row.sentiment as Sentiment].push(row.userId);
+    }
+  }
+
+  return result;
+}
+
+/**
  * 메뉴 포스트의 리액션 카운트 조회
  */
 export function getReactionCounts(menuPostId: number): Record<Sentiment, number> {
@@ -101,6 +129,12 @@ export function createReactionButtons(menuPostId: number): object[] {
           action_id: `reaction_negative_${menuPostId}`,
           value: `${menuPostId}:negative`,
         },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '👀 누가 눌렀지?', emoji: true },
+          action_id: `open_reaction_board_${menuPostId}`,
+          value: `${menuPostId}`,
+        },
       ],
     },
     { type: 'divider' },
@@ -141,7 +175,8 @@ export async function updateAllMenuMessageButtons(menuPostId: number): Promise<v
   // 리액션 업데이트 시에는 "n일 전 정보입니다" 문구를 생략 (최초 전송 시에만 붙음)
   const message = formatMenuMessage(menuPost, { skipDaysAgoNotice: true });
   const buttons = createReactionButtons(menuPostId);
-  const blocks = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const blocks: any[] = [
     {
       type: 'section',
       text: {

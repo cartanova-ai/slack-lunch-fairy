@@ -109,7 +109,8 @@ export function formatMenuMessage(
 /**
  * 메뉴 메시지용 Block Kit 생성
  */
-export function createMenuBlocks(menuPost: MenuPost): object[] {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createMenuBlocks(menuPost: MenuPost): any[] {
   const message = formatMenuMessage(menuPost);
   const buttons = createReactionButtons(menuPost.id);
 

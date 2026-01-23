@@ -2,8 +2,10 @@ import { app } from './app.js';
 import {
   setUserReaction,
   updateAllMenuMessageButtons,
+  getReactionsBysentiment,
   SENTIMENTS,
   SENTIMENT_EMOJI,
+  SENTIMENT_LABEL,
   type Sentiment,
 } from '../services/reactions.js';
 
@@ -48,6 +50,87 @@ export function registerReactionHandlers() {
 
     // 모든 메뉴 메시지 버튼 업데이트
     await updateAllMenuMessageButtons(menuPostId);
+  });
+
+  // "👀 누가 눌렀지?" 버튼 클릭 핸들러
+  app.action(/^open_reaction_board_\d+$/, async ({ action, ack, body, client }) => {
+    await ack();
+
+    const menuPostId = parseInt((action as any).value, 10);
+    const triggerId = (body as any).trigger_id;
+
+    console.log(`[리액션 보드] menuPostId=${menuPostId}`);
+
+    // 감정별 사용자 목록 조회
+    const reactionsBysentiment = getReactionsBysentiment(menuPostId);
+
+    // 모달 블록 생성
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blocks: any[] = [];
+
+    for (const sentiment of SENTIMENTS) {
+      const users = reactionsBysentiment[sentiment];
+      const emoji = SENTIMENT_EMOJI[sentiment];
+      const label = SENTIMENT_LABEL[sentiment];
+
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*${emoji} ${label}* (${users.length}명)`,
+        },
+      });
+
+      if (users.length > 0) {
+        // 사용자 ID를 멘션 형식으로 변환
+        const userMentions = users.map(uid => `<@${uid}>`).join(', ');
+        blocks.push({
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: userMentions,
+            },
+          ],
+        });
+      } else {
+        blocks.push({
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: '_아직 없어요_',
+            },
+          ],
+        });
+      }
+
+      blocks.push({ type: 'divider' });
+    }
+
+    // 마지막 divider 제거
+    blocks.pop();
+
+    try {
+      await client.views.open({
+        trigger_id: triggerId,
+        view: {
+          type: 'modal',
+          title: {
+            type: 'plain_text',
+            text: '👀 누가 눌렀지?',
+            emoji: true,
+          },
+          close: {
+            type: 'plain_text',
+            text: '닫기',
+          },
+          blocks,
+        },
+      });
+    } catch (error) {
+      console.error('[리액션 보드] 모달 열기 실패:', error);
+    }
   });
 
   console.log('리액션 핸들러 등록됨');
