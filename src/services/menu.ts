@@ -37,43 +37,51 @@ export async function getOrFetchMenuPost(dateStr?: string): Promise<MenuPost | n
     return todayMenu;
   }
 
+  // DB에서 가장 최근 메뉴 조회
+  const latestFromDb = db
+    .select()
+    .from(menuPosts)
+    .orderBy(menuPosts.id)
+    .all()
+    .pop(); // 가장 최근 것 (id가 큰 것)
+
   // 오늘 메뉴가 없으면 fetch 시도
   const fetched = await fetchLatestMenu();
+
   if (!fetched) {
     // fetch 실패 시 DB에서 가장 최근 메뉴 반환
-    const latestFromDb = db
-      .select()
-      .from(menuPosts)
-      .orderBy(menuPosts.id)
-      .limit(1)
-      .all()
-      .reverse()[0]; // 가장 최근 것
+    console.log(`fetch 실패, DB 최신 반환: ${latestFromDb?.date}`);
     return latestFromDb || null;
   }
 
   // fetch한 날짜가 DB에 이미 있는지 확인
-  const existingByFetchedDate = db
+  let fetchedMenuPost = db
     .select()
     .from(menuPosts)
     .where(eq(menuPosts.date, fetched.date))
     .get();
 
-  if (existingByFetchedDate) {
-    return existingByFetchedDate;
+  if (!fetchedMenuPost) {
+    // 새로운 메뉴 포스트 저장
+    fetchedMenuPost = db
+      .insert(menuPosts)
+      .values({
+        date: fetched.date,
+        menuText: fetched.content,
+      })
+      .returning()
+      .get();
+    console.log(`메뉴 포스트 저장됨: ${fetched.date}`);
   }
 
-  // 새로운 메뉴 포스트 저장
-  const result = db
-    .insert(menuPosts)
-    .values({
-      date: fetched.date,
-      menuText: fetched.content,
-    })
-    .returning()
-    .get();
+  // fetch 결과와 DB 최신 중 더 최근 것 반환
+  // DB의 id가 더 크면 DB 것이 더 최근 (수동 입력 등으로 추가됨)
+  if (latestFromDb && latestFromDb.id > fetchedMenuPost.id) {
+    console.log(`DB에 더 최신 메뉴 있음: ${latestFromDb.date} > ${fetchedMenuPost.date}`);
+    return latestFromDb;
+  }
 
-  console.log(`메뉴 포스트 저장됨: ${fetched.date}`);
-  return result;
+  return fetchedMenuPost;
 }
 
 /**
