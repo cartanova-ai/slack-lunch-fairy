@@ -1,8 +1,8 @@
 import { app } from './app.js';
 import { db } from '../db/index.js';
-import { subscriptions } from '../db/schema.js';
+import { subscriptions, menuPosts } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { getOrFetchMenuPost, sendMenuMessage } from '../services/menu.js';
+import { getOrFetchMenuPost, sendMenuMessage, insertManualMenu } from '../services/menu.js';
 
 // /lunch 슬래시 커맨드 핸들러
 export function registerCommands() {
@@ -178,11 +178,103 @@ export function registerCommands() {
         break;
       }
 
+      case 'feed': {
+        // /lunch feed 뒤의 나머지 텍스트를 메뉴로 사용
+        const menuText = command.text.replace(/^feed\s*/i, '').trim();
+
+        if (!menuText) {
+          // 텍스트가 없으면 모달 열기
+          try {
+            await app.client.views.open({
+              trigger_id: (command as any).trigger_id,
+              view: {
+                type: 'modal',
+                callback_id: 'manual_menu_submit',
+                title: { type: 'plain_text', text: '수동 메뉴 입력' },
+                submit: { type: 'plain_text', text: '저장' },
+                close: { type: 'plain_text', text: '취소' },
+                blocks: [
+                  {
+                    type: 'section',
+                    text: {
+                      type: 'mrkdwn',
+                      text: '식당에서 메뉴를 올리지 않았을 때 직접 입력할 수 있어요.\n\n텍스트 첫 줄에 날짜가 포함되어야 합니다.\n예: `01월26일(월요일) ♥진한식당 점심메뉴♥`',
+                    },
+                  },
+                  {
+                    type: 'input',
+                    block_id: 'menu_input',
+                    label: { type: 'plain_text', text: '메뉴 전체 텍스트' },
+                    element: {
+                      type: 'plain_text_input',
+                      action_id: 'menu_text',
+                      multiline: true,
+                      placeholder: { type: 'plain_text', text: '01월26일(월요일) ♥진한식당 점심메뉴♥\n🍖 돈불고기\n...' },
+                    },
+                  },
+                ],
+              },
+            });
+          } catch (error) {
+            console.error('[feed] 모달 열기 실패:', error);
+            await respond({
+              response_type: 'ephemeral',
+              text: '수동 입력 화면을 열 수 없습니다.',
+            });
+          }
+          break;
+        }
+
+        // 텍스트가 있으면 바로 처리
+        try {
+          const result = await insertManualMenu(menuText);
+          if (result.success) {
+            await respond({
+              response_type: 'ephemeral',
+              text: `✅ ${result.date} 메뉴가 저장되었습니다!`,
+            });
+          } else {
+            await respond({
+              response_type: 'ephemeral',
+              text: `❌ ${result.error}`,
+            });
+          }
+        } catch (error) {
+          console.error('[feed] 메뉴 저장 실패:', error);
+          await respond({
+            response_type: 'ephemeral',
+            text: '메뉴 저장 중 오류가 발생했습니다.',
+          });
+        }
+        break;
+      }
+
       default:
         await respond({
           response_type: 'ephemeral',
-          text: '*점심 요정 사용법:*\n• `/lunch now` - 메뉴 즉시 조회\n• `/lunch subscribe HH:mm` - 점심 알림 구독 (예: 11:30)\n• `/lunch subscribe list` - 구독 목록 확인\n• `/lunch unsubscribe` - 구독 취소',
+          text: '*점심 요정 사용법:*\n• `/lunch now` - 메뉴 즉시 조회\n• `/lunch subscribe HH:mm` - 점심 알림 구독 (예: 11:30)\n• `/lunch subscribe list` - 구독 목록 확인\n• `/lunch unsubscribe` - 구독 취소\n• `/lunch feed` - 수동 메뉴 입력 (식당에서 안 올렸을 때)',
         });
+    }
+  });
+
+  // 수동 메뉴 입력 모달 제출 핸들러
+  app.view('manual_menu_submit', async ({ ack, view, body }) => {
+    const menuText = view.state.values.menu_input.menu_text.value || '';
+
+    const result = insertManualMenu(menuText);
+
+    if (result.success) {
+      await ack({
+        response_action: 'clear',
+      });
+      console.log(`[수동 입력] 성공: ${result.date} by ${body.user.id}`);
+    } else {
+      await ack({
+        response_action: 'errors',
+        errors: {
+          menu_input: result.error,
+        },
+      });
     }
   });
 }

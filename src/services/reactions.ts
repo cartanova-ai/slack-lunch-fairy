@@ -171,25 +171,25 @@ export async function updateAllMenuMessageButtons(menuPostId: number): Promise<v
 
   if (!menuPost) return;
 
-  // 메시지 텍스트와 블록을 DB 정보로 재구성
-  // 리액션 업데이트 시에는 "n일 전 정보입니다" 문구를 생략 (최초 전송 시에만 붙음)
-  const message = formatMenuMessage(menuPost, { skipDaysAgoNotice: true });
   const buttons = createReactionButtons(menuPostId);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const blocks: any[] = [
-    {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: message,
-      },
-    },
-    ...buttons,
-  ];
 
-  // 각 메시지 업데이트
+  // 각 메시지 업데이트 (각 메시지의 발송 시점 기준으로 daysAgo 계산)
   for (const msg of messages) {
     try {
+      // 해당 메시지가 발송된 시점 기준으로 메뉴 포맷팅
+      const message = formatMenuMessage(menuPost, { sentAt: msg.createdAt });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const blocks: any[] = [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: message,
+          },
+        },
+        ...buttons,
+      ];
+
       await app.client.chat.update({
         channel: msg.channelId,
         ts: msg.messageTs,
