@@ -7,8 +7,8 @@ import { createReactionButtons } from './reactions.js';
 import { getKSTNow, getKSTDateStr } from '../utils/time.js';
 
 /**
- * 메뉴 포스트 가져오기 (DB 우선, 없으면 fetch)
- * @param dateStr "01월09일" 형식. null이면 최신 메뉴 fetch
+ * 메뉴 포스트 가져오기 (오늘 날짜 DB 우선 -> fetch -> DB에서 최신)
+ * @param dateStr "01월09일" 형식. null이면 오늘 날짜 또는 최신 메뉴
  */
 export async function getOrFetchMenuPost(dateStr?: string): Promise<MenuPost | null> {
   // 특정 날짜가 지정된 경우 DB에서 먼저 확인
@@ -24,10 +24,31 @@ export async function getOrFetchMenuPost(dateStr?: string): Promise<MenuPost | n
     }
   }
 
-  // DB에 없으면 fetch
+  // 날짜 미지정 시: 오늘 날짜가 DB에 있으면 바로 반환 (수동 입력된 경우)
+  const todayStr = getKSTDateStr();
+  const todayMenu = db
+    .select()
+    .from(menuPosts)
+    .where(eq(menuPosts.date, todayStr))
+    .get();
+
+  if (todayMenu) {
+    console.log(`오늘(${todayStr}) 메뉴가 DB에 있음 (수동 입력 또는 기존 스크랩)`);
+    return todayMenu;
+  }
+
+  // 오늘 메뉴가 없으면 fetch 시도
   const fetched = await fetchLatestMenu();
   if (!fetched) {
-    return null;
+    // fetch 실패 시 DB에서 가장 최근 메뉴 반환
+    const latestFromDb = db
+      .select()
+      .from(menuPosts)
+      .orderBy(menuPosts.id)
+      .limit(1)
+      .all()
+      .reverse()[0]; // 가장 최근 것
+    return latestFromDb || null;
   }
 
   // fetch한 날짜가 DB에 이미 있는지 확인
