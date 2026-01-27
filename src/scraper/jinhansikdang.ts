@@ -127,12 +127,20 @@ function decodeHtmlEntities(str: string): string {
 
 /**
  * 메뉴 텍스트 정리 및 포맷팅
+ * - 첫 줄 (날짜+제목) 제외
  * - 📍 이전까지만 (식당 정보 제외)
  * - 이모지 기준으로 bullet 리스트
  */
 export function formatMenuContent(rawContent: string): string {
+  // 첫 줄(날짜+제목 줄) 제거: "01월26일(월요일) ♥진한식당..." 패턴
+  let menuPart = rawContent;
+  const titleLinePattern = /^\d{2}월\d{2}일\([월화수목금토일]요일\)[^\n]*/;
+  menuPart = menuPart.replace(titleLinePattern, '').trim();
+
   // 📍 이전까지만 자르기 (식당 정보 제외)
-  const menuPart = rawContent.split('📍')[0].trim();
+  menuPart = menuPart.split('📍')[0].trim();
+  // :round_pushpin: 형식도 처리
+  menuPart = menuPart.split(':round_pushpin:')[0].trim();
 
   // 이모지+텍스트 패턴으로 각 메뉴 항목 추출
   // 이모지(1개 이상) + 공백 없이 바로 붙은 텍스트 + 다음 이모지 전까지
