@@ -3,6 +3,7 @@ import { reactions, menuMessages, menuPosts } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { app } from '../slack/app.js';
 import { formatMenuMessage } from './menu.js';
+import { getReviewsByMenuPostId } from './reviews.js';
 
 // 리액션 감정 종류
 export const SENTIMENTS = ['positive', 'neutral', 'negative'] as const;
@@ -108,6 +109,7 @@ export function createReactionButtons(menuPostId: number): object[] {
   const counts = getReactionCounts(menuPostId);
 
   return [
+    ...createReviewBlocks(menuPostId),
     {
       type: 'actions',
       elements: [
@@ -135,6 +137,12 @@ export function createReactionButtons(menuPostId: number): object[] {
           action_id: `open_reaction_board_${menuPostId}`,
           value: `${menuPostId}`,
         },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '📝 리뷰 쓰기', emoji: true },
+          action_id: `open_review_modal_${menuPostId}`,
+          value: `${menuPostId}`,
+        },
       ],
     },
     { type: 'divider' },
@@ -149,6 +157,27 @@ export function createReactionButtons(menuPostId: number): object[] {
       ],
     },
   ];
+}
+
+/**
+ * 리뷰 표시용 Block Kit 블록 생성
+ */
+export function createReviewBlocks(menuPostId: number): object[] {
+  const reviews = getReviewsByMenuPostId(menuPostId);
+
+  if (reviews.length === 0) {
+    return [];
+  }
+
+  return reviews.map((review) => ({
+    type: 'context',
+    elements: [
+      {
+        type: 'mrkdwn',
+        text: `_"${review.content}"_\n— <@${review.userId}>`,
+      },
+    ],
+  }));
 }
 
 /**

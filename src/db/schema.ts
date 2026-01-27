@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
 
 // 구독 정보 - 채널별 알림 시간
 export const subscriptions = sqliteTable('subscriptions', {
@@ -34,6 +34,18 @@ export const reactions = sqliteTable('reactions', {
   addedAt: integer('added_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// 리뷰 - 메뉴 포스트별 유저 리뷰 (유저당 1개)
+export const reviews = sqliteTable('reviews', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  menuPostId: integer('menu_post_id').notNull().references(() => menuPosts.id),
+  userId: text('user_id').notNull(),
+  content: text('content').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => [
+  unique().on(table.menuPostId, table.userId),
+]);
+
 // 타입 추출
 export type Subscription = typeof subscriptions.$inferSelect;
 export type NewSubscription = typeof subscriptions.$inferInsert;
@@ -43,3 +55,5 @@ export type MenuMessage = typeof menuMessages.$inferSelect;
 export type NewMenuMessage = typeof menuMessages.$inferInsert;
 export type Reaction = typeof reactions.$inferSelect;
 export type NewReaction = typeof reactions.$inferInsert;
+export type Review = typeof reviews.$inferSelect;
+export type NewReview = typeof reviews.$inferInsert;

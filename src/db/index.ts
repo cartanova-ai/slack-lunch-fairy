@@ -54,10 +54,21 @@ export function initDb() {
       added_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
 
+    CREATE TABLE IF NOT EXISTS reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      menu_post_id INTEGER NOT NULL REFERENCES menu_posts(id),
+      user_id TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
     CREATE INDEX IF NOT EXISTS idx_menu_posts_date ON menu_posts(date);
     CREATE INDEX IF NOT EXISTS idx_menu_messages_ts ON menu_messages(channel_id, message_ts);
     CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(menu_post_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_reactions_user_post ON reactions(menu_post_id, user_id);
+    CREATE INDEX IF NOT EXISTS idx_reviews_post ON reviews(menu_post_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_user_post ON reviews(menu_post_id, user_id);
   `);
 
   console.log(`DB 초기화 완료: ${dbPath}`);
