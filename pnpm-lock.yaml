@@ -20,6 +20,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@types/better-sqlite3@7.6.13)(better-sqlite3@12.6.0)
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
       node-cron:
         specifier: ^4.2.1
         version: 4.2.1
@@ -27,6 +30,9 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
       '@types/node':
         specifier: ^25.0.6
         version: 25.0.6
