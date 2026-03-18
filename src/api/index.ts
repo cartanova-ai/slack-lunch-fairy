@@ -31,8 +31,8 @@ export function startApiServer() {
     next();
   });
 
-  // POST /api/menuPost - 외부에서 메뉴 등록 → 구독 채널에 즉시 발송
-  app.post('/api/menuPost', async (req, res) => {
+  // POST /api/menuPosts - 외부에서 메뉴 등록 → 구독 채널에 즉시 발송
+  app.post('/api/menuPosts', async (req, res) => {
     const { source, menuText } = req.body;
 
     if (!menuText || typeof menuText !== 'string' || menuText.length > 5000) {
