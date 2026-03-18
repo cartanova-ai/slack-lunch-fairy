@@ -1,12 +1,12 @@
 import { app } from './app.js';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { writeFileSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { getKSTDateISO } from '../utils/time.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const GITHUB_REPO = 'cartanova-ai/slack-lunch-fairy';
 
@@ -85,11 +85,13 @@ ${feedbackText}`;
     try {
       writeFileSync(tmpFile, issueBody, 'utf-8');
 
-      // gh issue create 실행 (--body-file 사용)
-      const { stdout } = await execAsync(
-        `cd /home/potados/Projects/slack-lunch-fairy && gh issue create --repo ${GITHUB_REPO} --title "${issueTitle.replace(/"/g, '\\"')}" --body-file "${tmpFile}"`,
-        { timeout: 30000 }
-      );
+      // gh issue create 실행 (execFile로 인젝션 방지)
+      const { stdout } = await execFileAsync('gh', [
+        'issue', 'create',
+        '--repo', GITHUB_REPO,
+        '--title', issueTitle,
+        '--body-file', tmpFile,
+      ], { timeout: 30000 });
 
       const issueUrl = stdout.trim();
       console.log(`[피드백] 이슈 생성됨: ${issueUrl}`);

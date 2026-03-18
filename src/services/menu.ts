@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { menuPosts, menuMessages, subscriptions, type MenuPost } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { app } from '../slack/app.js';
 import { createReactionButtons } from './reactions.js';
 import { getKSTNow, getKSTDateStr } from '../utils/time.js';
@@ -99,9 +99,9 @@ export function getLatestMenuPost(): MenuPost | null {
   return db
     .select()
     .from(menuPosts)
-    .orderBy(menuPosts.id)
-    .all()
-    .pop() || null;
+    .orderBy(desc(menuPosts.id))
+    .limit(1)
+    .get() || null;
 }
 
 // ===== 메시지 포맷팅 및 발송 =====
