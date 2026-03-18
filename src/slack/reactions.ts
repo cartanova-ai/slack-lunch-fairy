@@ -1,3 +1,4 @@
+import type { BlockAction, ButtonAction } from '@slack/bolt';
 import { app } from './app.js';
 import {
   setUserReaction,
@@ -14,10 +15,10 @@ import {
  */
 export function registerReactionHandlers() {
   // 리액션 버튼 클릭 핸들러 (패턴 매칭)
-  app.action(/^reaction_(positive|neutral|negative)_\d+$/, async ({ action, ack, body, client }) => {
+  app.action<BlockAction<ButtonAction>>(/^reaction_(positive|neutral|negative)_\d+$/, async ({ action, ack, body, client }) => {
     await ack();
 
-    const value = (action as any).value as string;
+    const value = action.value || '';
 
     // value: "menuPostId:sentiment"
     const [menuPostIdStr, sentimentKey] = value.split(':');
@@ -39,11 +40,14 @@ export function registerReactionHandlers() {
 
     // 유저에게 피드백 (ephemeral)
     try {
-      await client.chat.postEphemeral({
-        channel: (body as any).channel?.id || (body as any).container?.channel_id,
-        user: userId,
-        text: `${SENTIMENT_EMOJI[sentiment]} 선택했어요!`,
-      });
+      const channelId = body.channel?.id || body.container?.channel_id;
+      if (channelId) {
+        await client.chat.postEphemeral({
+          channel: channelId,
+          user: userId,
+          text: `${SENTIMENT_EMOJI[sentiment]} 선택했어요!`,
+        });
+      }
     } catch (error) {
       console.error('[리액션] ephemeral 메시지 전송 실패:', error);
     }
@@ -53,23 +57,23 @@ export function registerReactionHandlers() {
   });
 
   // "👀 누가 눌렀지?" 버튼 클릭 핸들러
-  app.action(/^open_reaction_board_\d+$/, async ({ action, ack, body, client }) => {
+  app.action<BlockAction<ButtonAction>>(/^open_reaction_board_\d+$/, async ({ action, ack, body, client }) => {
     await ack();
 
-    const menuPostId = parseInt((action as any).value, 10);
-    const triggerId = (body as any).trigger_id;
+    const menuPostId = parseInt(action.value || '0', 10);
+    const triggerId = body.trigger_id;
 
     console.log(`[리액션 보드] menuPostId=${menuPostId}`);
 
     // 감정별 사용자 목록 조회
-    const reactionsBysentiment = getReactionsBySentiment(menuPostId);
+    const reactionsBySentiment = getReactionsBySentiment(menuPostId);
 
     // 모달 블록 생성
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const blocks: any[] = [];
 
     for (const sentiment of SENTIMENTS) {
-      const users = reactionsBysentiment[sentiment];
+      const users = reactionsBySentiment[sentiment];
       const emoji = SENTIMENT_EMOJI[sentiment];
       const label = SENTIMENT_LABEL[sentiment];
 
@@ -82,7 +86,6 @@ export function registerReactionHandlers() {
       });
 
       if (users.length > 0) {
-        // 사용자 ID를 멘션 형식으로 변환
         const userMentions = users.map(uid => `<@${uid}>`).join(', ');
         blocks.push({
           type: 'context',

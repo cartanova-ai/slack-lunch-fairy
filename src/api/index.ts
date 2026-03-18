@@ -54,6 +54,12 @@ export function startApiServer() {
     }
   });
 
+  // 전역 에러 핸들러 (내부 정보 유출 방지)
+  app.use(((err, req, res, _next) => {
+    console.error('[API] 서버 에러:', err);
+    res.status(500).json({ error: '내부 서버 오류' });
+  }) as express.ErrorRequestHandler);
+
   app.listen(API_PORT, () => {
     console.log(`API 서버 시작됨 (port: ${API_PORT})`);
   });

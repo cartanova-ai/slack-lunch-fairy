@@ -24,9 +24,9 @@
 
 ## 나중에 (낮음)
 
-- [ ] API 전역 에러 핸들러 추가 (`api/index.ts`)
+- [x] API 전역 에러 핸들러 추가 완료
 - [ ] API 바인딩 주소 검토 — `0.0.0.0` → `127.0.0.1` (용도에 따라)
 - [ ] `helmet` 보안 헤더 미들웨어 도입
 - [ ] 구독 CRUD를 서비스 레이어로 분리 (`commands.ts`에서 직접 DB 접근 중)
-- [ ] `as any` 캐스팅 정리 (Bolt 타입 좁히기)
+- [x] `as any` 캐스팅 정리 — `BlockAction<ButtonAction>` 제네릭으로 전부 교체, 0건 잔존
 - [ ] Ephemeral 메시지 헬퍼 함수 추출 (5곳 반복 패턴)

@@ -1,3 +1,4 @@
+import type { BlockAction } from '@slack/bolt';
 import { app } from './app.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
@@ -15,14 +16,14 @@ const GITHUB_REPO = 'cartanova-ai/slack-lunch-fairy';
  */
 export function registerFeedbackHandlers() {
   // 피드백 버튼 클릭 → 모달 열기
-  app.action('open_feedback_modal', async ({ ack, body, client }) => {
+  app.action<BlockAction>('open_feedback_modal', async ({ ack, body, client }) => {
     await ack();
 
-    const channelId = (body as any).channel?.id || (body as any).container?.channel_id;
+    const channelId = body.channel?.id || body.container?.channel_id;
 
     try {
       await client.views.open({
-        trigger_id: (body as any).trigger_id,
+        trigger_id: body.trigger_id,
         view: {
           type: 'modal',
           callback_id: 'feedback_modal_submit',

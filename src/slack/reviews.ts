@@ -1,3 +1,4 @@
+import type { BlockAction, ButtonAction } from '@slack/bolt';
 import { app } from './app.js';
 import { getUserReview, saveReview } from '../services/reviews.js';
 import { updateAllMenuMessageButtons } from '../services/reactions.js';
@@ -7,13 +8,12 @@ import { updateAllMenuMessageButtons } from '../services/reactions.js';
  */
 export function registerReviewHandlers() {
   // 리뷰 쓰기 버튼 클릭 → 모달 열기
-  app.action(/^open_review_modal_\d+$/, async ({ ack, body, client }) => {
+  app.action<BlockAction<ButtonAction>>(/^open_review_modal_\d+$/, async ({ ack, body, client }) => {
     await ack();
 
-    const actionBody = body as any;
-    const menuPostId = parseInt(actionBody.actions[0].value, 10);
-    const userId = actionBody.user.id;
-    const channelId = actionBody.channel?.id || actionBody.container?.channel_id;
+    const menuPostId = parseInt(body.actions[0].value || '0', 10);
+    const userId = body.user.id;
+    const channelId = body.channel?.id || body.container?.channel_id;
 
     // 기존 리뷰 조회
     const existingReview = getUserReview(menuPostId, userId);
@@ -21,7 +21,7 @@ export function registerReviewHandlers() {
 
     try {
       await client.views.open({
-        trigger_id: actionBody.trigger_id,
+        trigger_id: body.trigger_id,
         view: {
           type: 'modal',
           callback_id: 'review_modal_submit',

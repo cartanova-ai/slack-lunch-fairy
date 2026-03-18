@@ -150,7 +150,7 @@ export function registerCommands() {
         if (!menuText) {
           try {
             await app.client.views.open({
-              trigger_id: (command as any).trigger_id,
+              trigger_id: command.trigger_id,
               view: {
                 type: 'modal',
                 callback_id: 'manual_menu_submit',
