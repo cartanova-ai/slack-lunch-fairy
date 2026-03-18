@@ -1,5 +1,5 @@
 import express from 'express';
-import { insertManualMenu } from '../services/menu.js';
+import { receiveMenu } from '../services/menu.js';
 
 const API_PORT = Number(process.env.API_PORT) || 8080;
 const API_BEARER_TOKEN = process.env.API_BEARER_TOKEN;
@@ -23,8 +23,8 @@ export function startApiServer() {
     next();
   });
 
-  // POST /api/menuPost - 외부에서 메뉴 등록
-  app.post('/api/menuPost', (req, res) => {
+  // POST /api/menuPost - 외부에서 메뉴 등록 → 구독 채널에 즉시 발송
+  app.post('/api/menuPost', async (req, res) => {
     const { source, menuText } = req.body;
 
     if (!menuText || typeof menuText !== 'string') {
@@ -34,10 +34,10 @@ export function startApiServer() {
 
     console.log(`[API] 메뉴 입력 요청 (source: ${source || 'unknown'})`);
 
-    const result = insertManualMenu(menuText);
+    const result = await receiveMenu(menuText);
 
     if (result.success) {
-      res.json({ ok: true, date: result.date });
+      res.json({ ok: true, date: result.date, broadcast: result.broadcast });
     } else {
       res.status(409).json({ ok: false, error: result.error });
     }

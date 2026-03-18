@@ -1,30 +1,91 @@
 import { db } from '../db/index.js';
-import { menuPosts, menuMessages, type MenuPost } from '../db/schema.js';
+import { menuPosts, menuMessages, subscriptions, type MenuPost } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { fetchLatestMenu, formatMenuContent } from '../scraper/jinhansikdang.js';
 import { app } from '../slack/app.js';
 import { createReactionButtons } from './reactions.js';
 import { getKSTNow, getKSTDateStr } from '../utils/time.js';
 
-/**
- * 메뉴 포스트 가져오기 (오늘 날짜 DB 우선 -> fetch -> DB에서 최신)
- * @param dateStr "01월09일" 형식. null이면 오늘 날짜 또는 최신 메뉴
- */
-export async function getOrFetchMenuPost(dateStr?: string): Promise<MenuPost | null> {
-  // 특정 날짜가 지정된 경우 DB에서 먼저 확인
-  if (dateStr) {
-    const existing = db
-      .select()
-      .from(menuPosts)
-      .where(eq(menuPosts.date, dateStr))
-      .get();
+// ===== 내부 구현 =====
 
-    if (existing) {
-      return existing;
-    }
+/**
+ * 메뉴 텍스트에서 날짜를 추출하고 DB에 저장
+ */
+function insertMenu(menuText: string): { success: true; date: string; menuPost: MenuPost } | { success: false; error: string } {
+  const dateMatch = menuText.match(/(\d{2}월\d{2}일)/);
+  if (!dateMatch) {
+    return { success: false, error: '날짜를 찾을 수 없습니다. "01월26일" 형식의 날짜가 필요합니다.' };
   }
 
-  // 날짜 미지정 시: 오늘 날짜가 DB에 있으면 바로 반환 (수동 입력된 경우)
+  const date = dateMatch[1];
+
+  const existing = db
+    .select()
+    .from(menuPosts)
+    .where(eq(menuPosts.date, date))
+    .get();
+
+  if (existing) {
+    return { success: false, error: `${date} 메뉴가 이미 존재합니다. 기존 데이터를 덮어쓰려면 먼저 삭제해주세요.` };
+  }
+
+  const menuPost = db.insert(menuPosts)
+    .values({ date, menuText })
+    .returning()
+    .get();
+
+  console.log(`[메뉴] 저장됨: ${date}`);
+  return { success: true, date, menuPost };
+}
+
+/**
+ * 구독 채널 전체에 메뉴 발송
+ */
+async function broadcastMenu(menuPost: MenuPost): Promise<{ total: number; sent: number }> {
+  const channels = db.select().from(subscriptions).all();
+  let sent = 0;
+
+  for (const channel of channels) {
+    const result = await sendMenuMessage(menuPost, channel.channelId);
+    if (result) sent++;
+  }
+
+  console.log(`[메뉴] 브로드캐스트: ${sent}/${channels.length}개 채널`);
+  return { total: channels.length, sent };
+}
+
+// ===== 공개 API =====
+
+/**
+ * 외부에서 메뉴 수신 → 저장 + 구독 채널 브로드캐스트
+ * (HTTP API에서 사용)
+ */
+export async function receiveMenu(menuText: string): Promise<
+  { success: true; date: string; broadcast: { total: number; sent: number } } |
+  { success: false; error: string }
+> {
+  const result = insertMenu(menuText);
+  if (!result.success) return result;
+
+  const broadcast = await broadcastMenu(result.menuPost);
+  return { success: true, date: result.date, broadcast };
+}
+
+/**
+ * 수동 메뉴 입력 → 저장만 (발송 없음)
+ * (/lunch feed에서 사용)
+ */
+export function feedMenu(menuText: string): { success: true; date: string } | { success: false; error: string } {
+  const result = insertMenu(menuText);
+  if (!result.success) return result;
+  return { success: true, date: result.date };
+}
+
+/**
+ * DB에서 최신 메뉴 조회
+ * (/lunch now에서 사용)
+ */
+export function getLatestMenuPost(): MenuPost | null {
+  // 오늘 메뉴 우선
   const todayStr = getKSTDateStr();
   const todayMenu = db
     .select()
@@ -32,73 +93,55 @@ export async function getOrFetchMenuPost(dateStr?: string): Promise<MenuPost | n
     .where(eq(menuPosts.date, todayStr))
     .get();
 
-  if (todayMenu) {
-    console.log(`오늘(${todayStr}) 메뉴가 DB에 있음 (수동 입력 또는 기존 스크랩)`);
-    return todayMenu;
-  }
+  if (todayMenu) return todayMenu;
 
-  // DB에서 가장 최근 메뉴 조회
-  const latestFromDb = db
+  // 없으면 가장 최근 것
+  return db
     .select()
     .from(menuPosts)
     .orderBy(menuPosts.id)
     .all()
-    .pop(); // 가장 최근 것 (id가 큰 것)
-
-  // 오늘 메뉴가 없으면 fetch 시도
-  const fetched = await fetchLatestMenu();
-
-  if (!fetched) {
-    // fetch 실패 시 DB에서 가장 최근 메뉴 반환
-    console.log(`fetch 실패, DB 최신 반환: ${latestFromDb?.date}`);
-    return latestFromDb || null;
-  }
-
-  // fetch한 날짜가 DB에 이미 있는지 확인
-  let fetchedMenuPost = db
-    .select()
-    .from(menuPosts)
-    .where(eq(menuPosts.date, fetched.date))
-    .get();
-
-  if (!fetchedMenuPost) {
-    // 새로운 메뉴 포스트 저장
-    fetchedMenuPost = db
-      .insert(menuPosts)
-      .values({
-        date: fetched.date,
-        menuText: fetched.content,
-      })
-      .returning()
-      .get();
-    console.log(`메뉴 포스트 저장됨: ${fetched.date}`);
-  }
-
-  // fetch 결과와 DB 최신 중 더 최근 것 반환
-  // DB의 id가 더 크면 DB 것이 더 최근 (수동 입력 등으로 추가됨)
-  if (latestFromDb && latestFromDb.id > fetchedMenuPost.id) {
-    console.log(`DB에 더 최신 메뉴 있음: ${latestFromDb.date} > ${fetchedMenuPost.date}`);
-    return latestFromDb;
-  }
-
-  return fetchedMenuPost;
+    .pop() || null;
 }
 
+// ===== 메시지 포맷팅 및 발송 =====
+
 /**
- * 오늘 날짜 문자열 생성 (KST 기준)
+ * 메뉴 텍스트 정리 및 포맷팅
+ * - 첫 줄 (날짜+제목) 제외
+ * - 📍 이전까지만 (식당 정보 제외)
+ * - 이모지 기준으로 bullet 리스트
  */
-export function getTodayDateStr(): string {
-  return getKSTDateStr();
+export function formatMenuContent(rawContent: string): string {
+  // 첫 줄(날짜+제목 줄) 제거: "01월26일(월요일) ♥진한식당..." 패턴
+  let menuPart = rawContent;
+  const titleLinePattern = /^\d{2}월\d{2}일\([월화수목금토일]요일\)[^\n]*/;
+  menuPart = menuPart.replace(titleLinePattern, '').trim();
+
+  // 📍 이전까지만 자르기 (식당 정보 제외)
+  menuPart = menuPart.split('📍')[0].trim();
+  menuPart = menuPart.split(':round_pushpin:')[0].trim();
+
+  // 이모지+텍스트 패턴으로 각 메뉴 항목 추출
+  const menuPattern = /([\p{Emoji}\u{FE0F}]+)\s*([^[\p{Emoji}]+)/gu;
+  const matches = [...menuPart.matchAll(menuPattern)];
+
+  const menuItems: string[] = [];
+  for (const match of matches) {
+    const emoji = match[1];
+    const text = match[2]?.trim();
+    if (emoji && text) {
+      menuItems.push(`• ${emoji} ${text}`);
+    }
+  }
+
+  return menuItems.join('\n');
 }
 
 /**
  * 메뉴 날짜와 특정 시점을 비교해서 며칠 전인지 반환 (KST 기준)
- * @param menuDateStr "01월09일" 형식의 날짜 문자열
- * @param referenceDate 비교 기준 시점 (기본값: 현재 KST 시간)
- * @param yearHint 연도 결정을 위한 힌트 (기본값: referenceDate의 연도)
  */
-export function getDaysAgo(menuDateStr: string, referenceDate?: Date, yearHint?: Date): number {
-  // referenceDate가 없으면 현재 KST 시간 사용
+function getDaysAgo(menuDateStr: string, referenceDate?: Date, yearHint?: Date): number {
   const refDate = referenceDate ? new Date(referenceDate.getTime() + 9 * 60 * 60 * 1000) : getKSTNow();
 
   const match = menuDateStr.match(/(\d{2})월(\d{2})일/);
@@ -107,7 +150,6 @@ export function getDaysAgo(menuDateStr: string, referenceDate?: Date, yearHint?:
   const menuMonth = parseInt(match[1], 10) - 1;
   const menuDay = parseInt(match[2], 10);
 
-  // yearHint 또는 referenceDate 기준으로 연도 결정 (연말/연초 경계 문제 방지)
   const hintDate = yearHint || refDate;
   const year = hintDate.getUTCFullYear();
   const menuDate = Date.UTC(year, menuMonth, menuDay);
@@ -118,8 +160,6 @@ export function getDaysAgo(menuDateStr: string, referenceDate?: Date, yearHint?:
 
 /**
  * 메뉴 메시지 포맷팅
- * @param menuPost 메뉴 포스트 데이터
- * @param options.sentAt 메시지 발송 시점 (이 시점 기준으로 "n일 전 정보" 계산). 없으면 현재 시점 사용.
  */
 export function formatMenuMessage(
   menuPost: MenuPost,
@@ -127,8 +167,6 @@ export function formatMenuMessage(
 ): string {
   const formattedContent = formatMenuContent(menuPost.menuText);
 
-  // 메시지 발송 시점(sentAt) 기준으로 메뉴가 며칠 전인지 계산
-  // sentAt이 제공되면 그 시점 기준, 아니면 현재 시점 기준
   const daysAgo = getDaysAgo(menuPost.date, options?.sentAt, menuPost.createdAt);
 
   let noticeText = '';
@@ -160,7 +198,8 @@ export function createMenuBlocks(menuPost: MenuPost): any[] {
 }
 
 /**
- * 메뉴 메시지 발송 및 DB 저장
+ * 단일 채널에 메뉴 메시지 발송 및 DB 저장
+ * (/lunch now에서 사용)
  */
 export async function sendMenuMessage(
   menuPost: MenuPost,
@@ -172,7 +211,7 @@ export async function sendMenuMessage(
 
     const result = await app.client.chat.postMessage({
       channel: channelId,
-      text: message, // fallback
+      text: message,
       blocks,
     });
 
@@ -181,7 +220,6 @@ export async function sendMenuMessage(
       return null;
     }
 
-    // 메뉴 메시지 DB 저장
     const menuMessage = db
       .insert(menuMessages)
       .values({
@@ -198,42 +236,4 @@ export async function sendMenuMessage(
     console.error('메뉴 메시지 발송 실패:', error);
     return null;
   }
-}
-
-/**
- * 수동 메뉴 입력 처리
- * 텍스트에서 날짜를 추출하고 DB에 저장
- * @param menuText 전체 메뉴 텍스트 (날짜 포함)
- * @returns 성공 여부와 날짜 또는 에러 메시지
- */
-export function insertManualMenu(menuText: string): { success: true; date: string } | { success: false; error: string } {
-  // 날짜 추출: "01월26일" 형식
-  const dateMatch = menuText.match(/(\d{2}월\d{2}일)/);
-  if (!dateMatch) {
-    return { success: false, error: '날짜를 찾을 수 없습니다. "01월26일" 형식의 날짜가 필요합니다.' };
-  }
-
-  const date = dateMatch[1];
-
-  // 이미 해당 날짜가 DB에 있는지 확인
-  const existing = db
-    .select()
-    .from(menuPosts)
-    .where(eq(menuPosts.date, date))
-    .get();
-
-  if (existing) {
-    return { success: false, error: `${date} 메뉴가 이미 존재합니다. 기존 데이터를 덮어쓰려면 먼저 삭제해주세요.` };
-  }
-
-  // DB에 저장 (스크래핑한 것처럼 menuText 저장)
-  db.insert(menuPosts)
-    .values({
-      date,
-      menuText,
-    })
-    .run();
-
-  console.log(`[수동 입력] 메뉴 저장됨: ${date}`);
-  return { success: true, date };
 }
