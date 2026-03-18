@@ -2,7 +2,7 @@ import { db } from '../db/index.js';
 import { reactions, menuMessages, menuPosts } from '../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import { app } from '../slack/app.js';
-import { formatMenuMessage } from './menu.js';
+import { formatMenuMessage } from './format.js';
 import { getReviewsByMenuPostId } from './reviews.js';
 
 // 리액션 감정 종류
@@ -26,7 +26,7 @@ export const SENTIMENT_LABEL: Record<Sentiment, string> = {
 /**
  * 메뉴 포스트의 리액션을 감정별로 그룹핑하여 사용자 ID 목록 반환
  */
-export function getReactionsBysentiment(menuPostId: number): Record<Sentiment, string[]> {
+export function getReactionsBySentiment(menuPostId: number): Record<Sentiment, string[]> {
   const result: Record<Sentiment, string[]> = {
     positive: [],
     neutral: [],

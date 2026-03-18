@@ -13,14 +13,6 @@ export function getKSTNow(): Date {
 }
 
 /**
- * 현재 KST 시간 문자열 (HH:mm)
- */
-export function getKSTTimeStr(): string {
-  const kst = getKSTNow();
-  return `${String(kst.getUTCHours()).padStart(2, '0')}:${String(kst.getUTCMinutes()).padStart(2, '0')}`;
-}
-
-/**
  * 현재 KST 날짜 문자열 (MM월DD일)
  */
 export function getKSTDateStr(): string {
@@ -28,13 +20,6 @@ export function getKSTDateStr(): string {
   const month = String(kst.getUTCMonth() + 1).padStart(2, '0');
   const day = String(kst.getUTCDate()).padStart(2, '0');
   return `${month}월${day}일`;
-}
-
-/**
- * 현재 KST 요일 반환 (0=일요일, 1=월요일, ..., 6=토요일)
- */
-export function getKSTDayOfWeek(): number {
-  return getKSTNow().getUTCDay();
 }
 
 /**

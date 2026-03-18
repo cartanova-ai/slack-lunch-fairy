@@ -13,14 +13,14 @@
 
 ## 단기 개선 (중간)
 
-- [ ] **순환 의존성** — `menu.ts` ↔ `reactions.ts` 간 순환 import, 포맷팅 로직을 별도 모듈로 분리 필요
-- [ ] **보안: rate limiting** 부재 — `express-rate-limit` 도입 (`api/index.ts`)
-- [ ] **보안: `menuText` 길이 제한** 없음 — 최대 길이 검증 추가 (`api/index.ts:30`)
-- [ ] **보안: `source` 로그 인젝션** — 줄바꿈/ANSI 문자 필터링 필요 (`api/index.ts:35`)
-- [ ] **레거시 `notifyTime` 필드** — 더미값 `'00:00'` 하드코딩 중, 스키마 정리 필요 (`db/schema.ts:7`)
-- [ ] **네이밍 오타** — `getReactionsBysentiment` → `getReactionsBySentiment` (`services/reactions.ts` + 호출부 2곳)
-- [ ] **`formatMenuMessage` 이중 호출** — `sendMenuMessage`에서 한 번, `createMenuBlocks` 안에서 또 한 번 (`services/menu.ts`)
-- [ ] **미사용 유틸 함수** — `getKSTTimeStr`, `getKSTDayOfWeek` 제거 (`utils/time.ts`)
+- [x] **순환 의존성** — `services/format.ts` 추출로 해소
+- [x] **보안: rate limiting** — `express-rate-limit` 도입 (15분당 10회)
+- [x] **보안: `menuText` 길이 제한** — 5000자 제한 추가
+- [x] **보안: `source` 로그 인젝션** — 줄바꿈/ANSI 필터링 + 50자 제한
+- [x] **레거시 `notifyTime` 필드** — `$defaultFn`으로 기본값 설정, insert에서 제거
+- [x] **네이밍 오타** — `getReactionsBySentiment`로 수정 완료
+- [x] **`formatMenuMessage` 이중 호출** — `createMenuBlocks`가 message 문자열을 받도록 변경
+- [x] **미사용 유틸 함수** — `getKSTTimeStr`, `getKSTDayOfWeek` 제거 완료
 
 ## 나중에 (낮음)
 

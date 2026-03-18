@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import { receiveMenu } from '../services/menu.js';
 
 const API_PORT = Number(process.env.API_PORT) || 8080;
@@ -11,7 +12,14 @@ export function startApiServer() {
   }
 
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: '10kb' }));
+
+  // Rate limiting (15분당 최대 10회)
+  app.use('/api', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Too many requests' },
+  }));
 
   // Bearer 토큰 인증
   app.use('/api', (req, res, next) => {
@@ -27,12 +35,15 @@ export function startApiServer() {
   app.post('/api/menuPost', async (req, res) => {
     const { source, menuText } = req.body;
 
-    if (!menuText || typeof menuText !== 'string') {
-      res.status(400).json({ error: 'menuText는 필수입니다.' });
+    if (!menuText || typeof menuText !== 'string' || menuText.length > 5000) {
+      res.status(400).json({ error: 'menuText는 필수이며 5000자 이하여야 합니다.' });
       return;
     }
 
-    console.log(`[API] 메뉴 입력 요청 (source: ${source || 'unknown'})`);
+    const safeSource = typeof source === 'string'
+      ? source.replace(/[\r\n\x1b]/g, '').substring(0, 50)
+      : 'unknown';
+    console.log(`[API] 메뉴 입력 요청 (source: ${safeSource})`);
 
     const result = await receiveMenu(menuText);
 

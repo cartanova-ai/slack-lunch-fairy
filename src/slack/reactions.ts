@@ -2,7 +2,7 @@ import { app } from './app.js';
 import {
   setUserReaction,
   updateAllMenuMessageButtons,
-  getReactionsBysentiment,
+  getReactionsBySentiment,
   SENTIMENTS,
   SENTIMENT_EMOJI,
   SENTIMENT_LABEL,
@@ -62,7 +62,7 @@ export function registerReactionHandlers() {
     console.log(`[리액션 보드] menuPostId=${menuPostId}`);
 
     // 감정별 사용자 목록 조회
-    const reactionsBysentiment = getReactionsBysentiment(menuPostId);
+    const reactionsBysentiment = getReactionsBySentiment(menuPostId);
 
     // 모달 블록 생성
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

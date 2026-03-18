@@ -1,10 +1,10 @@
 import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core';
 
-// 구독 정보 - 채널별 알림 시간
+// 구독 정보
 export const subscriptions = sqliteTable('subscriptions', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   channelId: text('channel_id').notNull().unique(),
-  notifyTime: text('notify_time').notNull(), // "HH:mm" 형식
+  notifyTime: text('notify_time').notNull().$defaultFn(() => '00:00'), // @deprecated 레거시 필드, 사용하지 않음
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 

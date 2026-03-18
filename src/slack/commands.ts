@@ -99,10 +99,7 @@ export function registerCommands() {
             });
           } else {
             db.insert(subscriptions)
-              .values({
-                channelId: command.channel_id,
-                notifyTime: '00:00', // 레거시 필드, 사용하지 않음
-              })
+              .values({ channelId: command.channel_id })
               .run();
             await respond({
               response_type: 'ephemeral',
