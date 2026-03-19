@@ -12,7 +12,14 @@ export function startApiServer() {
   }
 
   const app = express();
-  app.use(express.json({ limit: '10kb' }));
+  // JSON 파싱 (문자열 내 실제 줄바꿈을 이스케이프 처리)
+  app.use(express.text({ limit: '10kb', type: 'application/json' }));
+  app.use((req, _res, next) => {
+    if (typeof req.body === 'string') {
+      req.body = JSON.parse(req.body.replace(/\n/g, '\\n'));
+    }
+    next();
+  });
 
   // Rate limiting (15분당 최대 10회)
   app.use('/api', rateLimit({
