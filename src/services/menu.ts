@@ -9,9 +9,9 @@ import { getKSTDateStr } from '../utils/time.js';
 // ===== 내부 구현 =====
 
 /**
- * 메뉴 텍스트에서 날짜를 추출하고 DB에 저장
+ * 메뉴 텍스트에서 날짜를 추출하고 DB에 upsert
  */
-function insertMenu(menuText: string): { success: true; date: string; menuPost: MenuPost } | { success: false; error: string } {
+function upsertMenu(menuText: string): { success: true; date: string; menuPost: MenuPost } | { success: false; error: string } {
   const dateMatch = menuText.match(/(\d{2}월\d{2}일)/);
   if (!dateMatch) {
     return { success: false, error: '날짜를 찾을 수 없습니다. "01월26일" 형식의 날짜가 필요합니다.' };
@@ -26,7 +26,12 @@ function insertMenu(menuText: string): { success: true; date: string; menuPost: 
     .get();
 
   if (existing) {
-    return { success: false, error: `${date} 메뉴가 이미 존재합니다. 기존 데이터를 덮어쓰려면 먼저 삭제해주세요.` };
+    db.update(menuPosts)
+      .set({ menuText })
+      .where(eq(menuPosts.date, date))
+      .run();
+    console.log(`[메뉴] 업데이트됨: ${date}`);
+    return { success: true, date, menuPost: { ...existing, menuText } };
   }
 
   const menuPost = db.insert(menuPosts)
@@ -83,7 +88,7 @@ export async function receiveMenu(menuText: string): Promise<
   { success: true; date: string; broadcast: { total: number; sent: number } } |
   { success: false; error: string }
 > {
-  const result = insertMenu(menuText);
+  const result = upsertMenu(menuText);
   if (!result.success) return result;
 
   const broadcast = await broadcastMenu(result.menuPost);
@@ -95,7 +100,7 @@ export async function receiveMenu(menuText: string): Promise<
  * (/lunch feed에서 사용)
  */
 export function feedMenu(menuText: string): { success: true; date: string } | { success: false; error: string } {
-  const result = insertMenu(menuText);
+  const result = upsertMenu(menuText);
   if (!result.success) return result;
   return { success: true, date: result.date };
 }
