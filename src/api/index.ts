@@ -12,6 +12,7 @@ export function startApiServer() {
   }
 
   const app = express();
+  app.set('trust proxy', 1);
   // JSON 파싱 (문자열 내 실제 줄바꿈을 이스케이프 처리)
   app.use(express.text({ limit: '10kb', type: 'application/json' }));
   app.use((req, _res, next) => {
