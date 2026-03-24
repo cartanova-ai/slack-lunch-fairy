@@ -61,10 +61,20 @@ export function formatMenuMessage(
 
   const daysAgo = getDaysAgo(menuPost.date, options?.sentAt, menuPost.createdAt);
 
-  let noticeText = '';
-  if (daysAgo > 0) {
-    noticeText = `> _${daysAgo}일 전 정보입니다. 오늘 메뉴는 아직 올라오지 않았어요._\n\n`;
+  const notices: string[] = [];
+
+  // 본문 속 날짜와 DB 날짜가 다르면 날짜 보정 노티스
+  const textDateMatch = menuPost.menuText.match(/(\d{2}월\d{2}일)/);
+  if (textDateMatch && textDateMatch[1] !== menuPost.date) {
+    notices.push(`> _원본에 표기된 날짜(${textDateMatch[1]})가 실제와 다릅니다. 날짜를 보정하여 표시합니다._`);
   }
+
+  // n일 전 메뉴 노티스
+  if (daysAgo > 0) {
+    notices.push(`> _${daysAgo}일 전 정보입니다. 오늘 메뉴는 아직 올라오지 않았어요._`);
+  }
+
+  const noticeText = notices.length > 0 ? notices.join('\n') + '\n\n' : '';
 
   return `${noticeText}🍽️ *진한식당 ${menuPost.date} 점심 메뉴* 🍽️\n\n${formattedContent}`;
 }

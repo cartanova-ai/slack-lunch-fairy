@@ -17,7 +17,13 @@ function upsertMenu(menuText: string): { success: true; date: string; menuPost: 
     return { success: false, error: '날짜를 찾을 수 없습니다. "01월26일" 형식의 날짜가 필요합니다.' };
   }
 
-  const date = dateMatch[1];
+  const textDate = dateMatch[1];
+  const today = getKSTDateStr();
+  const date = (textDate !== today) ? today : textDate;
+
+  if (textDate !== today) {
+    console.log(`[메뉴] 날짜 보정: ${textDate} → ${today}`);
+  }
 
   const existing = db
     .select()
