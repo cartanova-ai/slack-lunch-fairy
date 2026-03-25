@@ -13,7 +13,7 @@
       {
         "command": "/lunch",
         "description": "점심 요정 명령어",
-        "usage_hint": "[subscribe HH:mm | unsubscribe | list]",
+        "usage_hint": "[now | subscribe | subscribe list | unsubscribe | feed]",
         "should_escape": false
       }
     ]
@@ -23,19 +23,11 @@
       "bot": [
         "chat:write",
         "chat:write.public",
-        "commands",
-        "reactions:read",
-        "reactions:write"
+        "commands"
       ]
     }
   },
   "settings": {
-    "event_subscriptions": {
-      "bot_events": [
-        "reaction_added",
-        "reaction_removed"
-      ]
-    },
     "interactivity": {
       "is_enabled": true
     },
