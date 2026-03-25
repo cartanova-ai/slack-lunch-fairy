@@ -11,18 +11,21 @@ import { getKSTDateStr } from '../utils/time.js';
 /**
  * 메뉴 텍스트에서 날짜를 추출하고 DB에 upsert
  */
-function upsertMenu(menuText: string): { success: true; date: string; menuPost: MenuPost } | { success: false; error: string } {
+function upsertMenu(menuText: string, options?: { trustTextDate?: boolean }): { success: true; date: string; menuPost: MenuPost } | { success: false; error: string } {
   const dateMatch = menuText.match(/(\d{2}월\d{2}일)/);
   if (!dateMatch) {
     return { success: false, error: '날짜를 찾을 수 없습니다. "01월26일" 형식의 날짜가 필요합니다.' };
   }
 
   const textDate = dateMatch[1];
-  const today = getKSTDateStr();
-  const date = (textDate !== today) ? today : textDate;
+  let date = textDate;
 
-  if (textDate !== today) {
-    console.log(`[메뉴] 날짜 보정: ${textDate} → ${today}`);
+  if (!options?.trustTextDate) {
+    const today = getKSTDateStr();
+    if (textDate !== today) {
+      date = today;
+      console.log(`[메뉴] 날짜 보정: ${textDate} → ${today}`);
+    }
   }
 
   const existing = db
@@ -106,7 +109,7 @@ export async function receiveMenu(menuText: string): Promise<
  * (/lunch feed에서 사용)
  */
 export function feedMenu(menuText: string): { success: true; date: string } | { success: false; error: string } {
-  const result = upsertMenu(menuText);
+  const result = upsertMenu(menuText, { trustTextDate: true });
   if (!result.success) return result;
   return { success: true, date: result.date };
 }
