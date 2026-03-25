@@ -136,5 +136,25 @@ export function registerReactionHandlers() {
     }
   });
 
+  // 🗑️ 삭제 버튼 클릭 핸들러
+  app.action<BlockAction<ButtonAction>>(/^delete_menu_message_\d+$/, async ({ ack, body, client }) => {
+    await ack();
+
+    const channelId = body.channel?.id;
+    const messageTs = body.message?.ts;
+
+    if (!channelId || !messageTs) {
+      console.error('[삭제] 채널 또는 메시지 ts를 찾을 수 없음');
+      return;
+    }
+
+    try {
+      await client.chat.delete({ channel: channelId, ts: messageTs });
+      console.log(`[삭제] 메뉴 메시지 삭제됨: 채널=${channelId}, ts=${messageTs}`);
+    } catch (error) {
+      console.error('[삭제] 메시지 삭제 실패:', error);
+    }
+  });
+
   console.log('리액션 핸들러 등록됨');
 }

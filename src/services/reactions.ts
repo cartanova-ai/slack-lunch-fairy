@@ -154,6 +154,18 @@ export function createReactionButtons(menuPostId: number): object[] {
           text: { type: 'plain_text', text: '🛠️ 고장신고/기능제안', emoji: true },
           action_id: 'open_feedback_modal',
         },
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: '🗑️ 삭제', emoji: true },
+          action_id: `delete_menu_message_${menuPostId}`,
+          value: `${menuPostId}`,
+          confirm: {
+            title: { type: 'plain_text', text: '메시지 삭제' },
+            text: { type: 'plain_text', text: '이 메뉴 메시지를 삭제할까요?' },
+            confirm: { type: 'plain_text', text: '삭제' },
+            deny: { type: 'plain_text', text: '취소' },
+          },
+        },
       ],
     },
   ];
