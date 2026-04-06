@@ -4,7 +4,7 @@ import { eq, desc } from 'drizzle-orm';
 import { app } from '../slack/app.js';
 import { createReactionButtons } from './reactions.js';
 import { formatMenuMessage } from './format.js';
-import { getKSTDateStr } from '../utils/time.js';
+import { getKSTDateStr, extractDateFromText } from '../utils/time.js';
 
 // ===== 내부 구현 =====
 
@@ -12,12 +12,11 @@ import { getKSTDateStr } from '../utils/time.js';
  * 메뉴 텍스트에서 날짜를 추출하고 DB에 upsert
  */
 function upsertMenu(menuText: string, options?: { trustTextDate?: boolean }): { success: true; date: string; menuPost: MenuPost } | { success: false; error: string } {
-  const dateMatch = menuText.match(/(\d{2}월\d{2}일)/);
-  if (!dateMatch) {
-    return { success: false, error: '날짜를 찾을 수 없습니다. "01월26일" 형식의 날짜가 필요합니다.' };
+  const textDate = extractDateFromText(menuText);
+  if (!textDate) {
+    return { success: false, error: '날짜를 찾을 수 없습니다. "1월26일" 또는 "01월26일" 형식의 날짜가 필요합니다.' };
   }
 
-  const textDate = dateMatch[1];
   let date = textDate;
 
   if (!options?.trustTextDate) {

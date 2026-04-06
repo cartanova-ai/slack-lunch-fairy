@@ -1,5 +1,5 @@
 import type { MenuPost } from '../db/schema.js';
-import { getKSTNow } from '../utils/time.js';
+import { getKSTNow, extractDateFromText } from '../utils/time.js';
 
 /**
  * 메뉴 텍스트 정리 및 포맷팅
@@ -9,7 +9,7 @@ import { getKSTNow } from '../utils/time.js';
  */
 export function formatMenuContent(rawContent: string): string {
   let menuPart = rawContent;
-  const titleLinePattern = /^\d{2}월\d{2}일\([월화수목금토일]요일\)[^\n]*/;
+  const titleLinePattern = /^\d{1,2}월\d{1,2}일\([월화수목금토일]요일\)[^\n]*/;
   menuPart = menuPart.replace(titleLinePattern, '').trim();
 
   menuPart = menuPart.split('📍')[0].trim();
@@ -36,7 +36,7 @@ export function formatMenuContent(rawContent: string): string {
 function getDaysAgo(menuDateStr: string, referenceDate?: Date, yearHint?: Date): number {
   const refDate = referenceDate ? new Date(referenceDate.getTime() + 9 * 60 * 60 * 1000) : getKSTNow();
 
-  const match = menuDateStr.match(/(\d{2})월(\d{2})일/);
+  const match = menuDateStr.match(/(\d{1,2})월(\d{1,2})일/);
   if (!match) return 0;
 
   const menuMonth = parseInt(match[1], 10) - 1;
@@ -64,9 +64,9 @@ export function formatMenuMessage(
   const notices: string[] = [];
 
   // 본문 속 날짜와 DB 날짜가 다르면 날짜 보정 노티스
-  const textDateMatch = menuPost.menuText.match(/(\d{2}월\d{2}일)/);
-  if (textDateMatch && textDateMatch[1] !== menuPost.date) {
-    notices.push(`> _원본에 표기된 날짜(${textDateMatch[1]})가 실제와 다릅니다. 날짜를 보정하여 표시합니다._`);
+  const textDate = extractDateFromText(menuPost.menuText);
+  if (textDate && textDate !== menuPost.date) {
+    notices.push(`> _원본에 표기된 날짜(${textDate})가 실제와 다릅니다. 날짜를 보정하여 표시합니다._`);
   }
 
   // n일 전 메뉴 노티스
