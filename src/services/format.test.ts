@@ -127,4 +127,45 @@ describe('formatMenuContent', () => {
     expect(result).not.toContain('03월31일');
     expect(result).not.toContain('센트로드');
   });
+
+  it('ZWJ 복합 이모지(🍄‍🟫)가 하나의 항목으로 처리됨', () => {
+    const input = `7월21일(화요일) ♥진한식당 점심메뉴♥\n🍄‍🟫 햄아채볶음밥\n🍖 간장불고기`;
+
+    const result = formatMenuContent(input);
+    expect(result).toContain('🍄‍🟫 햄아채볶음밥');
+    expect(result).toContain('간장불고기');
+    const lines = result.split('\n');
+    for (const line of lines) {
+      const textPart = line.replace(/^•\s+\S+\s*/, '').trim();
+      expect(textPart.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('※ 시간안내문이 메뉴에 포함되지 않음', () => {
+    const input = `7월21일(화요일) ♥진한식당 점심메뉴♥\n🍖 간장불고기\n🍤 치킨너겟\n\n※ 11시40분이전에 오시면 대기없이\n편하게 식사하실 수 있습니다.\n📍 센트로드 상가 2층`;
+
+    const result = formatMenuContent(input);
+    expect(result).toContain('간장불고기');
+    expect(result).toContain('치킨너겟');
+    expect(result).not.toContain('11');
+    expect(result).not.toContain('대기없이');
+    expect(result).not.toContain('센트로드');
+  });
+
+  it('※가 📍보다 먼저 나올 때 ※에서 자름', () => {
+    const input = `7월20일(월요일) ♥진한식당 점심메뉴♥\n\n🍖 불고기\n\n※ 안내문\n📍 위치`;
+
+    const result = formatMenuContent(input);
+    expect(result).toContain('불고기');
+    expect(result).not.toContain('안내문');
+    expect(result).not.toContain('위치');
+  });
+
+  it('타이틀과 메뉴 사이에 빈 줄이 없어도 정상 처리', () => {
+    const input = `7월16일(목요일) ♥진한식당 점심메뉴♥\n🍄‍🟫대만식 비빔탄탄면(옥수수면)\n🍖 고추장 불고기`;
+
+    const result = formatMenuContent(input);
+    expect(result).toContain('대만식 비빔탄탄면(옥수수면)');
+    expect(result).toContain('고추장 불고기');
+  });
 });

@@ -12,10 +12,15 @@ export function formatMenuContent(rawContent: string): string {
   const titleLinePattern = /^\d{1,2}월\d{1,2}일\([월화수목금토일]요일\)[^\n]*/;
   menuPart = menuPart.replace(titleLinePattern, '').trim();
 
-  menuPart = menuPart.split('📍')[0].trim();
-  menuPart = menuPart.split(':round_pushpin:')[0].trim();
+  const boundaries = ['📍', ':round_pushpin:', '※'];
+  let cutIndex = menuPart.length;
+  for (const b of boundaries) {
+    const idx = menuPart.indexOf(b);
+    if (idx !== -1 && idx < cutIndex) cutIndex = idx;
+  }
+  menuPart = menuPart.substring(0, cutIndex).trim();
 
-  const menuPattern = /([\p{Emoji}\u{FE0F}]+)\s*([^[\p{Emoji}]+)/gu;
+  const menuPattern = /([\p{Emoji}\u{FE0F}\u{200D}]+)\s*([^[\p{Emoji}\u{200D}]+)/gu;
   const matches = [...menuPart.matchAll(menuPattern)];
 
   const menuItems: string[] = [];
